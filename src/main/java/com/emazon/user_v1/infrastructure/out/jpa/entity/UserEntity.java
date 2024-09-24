@@ -6,6 +6,9 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.IOException;
+import java.io.Serial;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -57,6 +60,12 @@ public class UserEntity implements UserDetails {
     @Column(name = "credential_no_expired", nullable = false)
     private Boolean credentialNoExpired;
 
+    @Column(name = "failed_attempts", nullable = false)
+    private Integer failedAttempts;
+
+    @Column(name = "account_locked_datetime")
+    private Instant accountLockedDatetime;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     private RoleEntity role;
@@ -77,7 +86,7 @@ public class UserEntity implements UserDetails {
 
     @Override
     public String getUsername() {
-        return id + "," + email;
+        return id.toString();
     }
 
     @Override
@@ -98,5 +107,17 @@ public class UserEntity implements UserDetails {
     @Override
     public boolean isEnabled() {
         return enabled;
+    }
+
+    @Serial
+    private void writeObject(java.io.ObjectOutputStream stream)
+            throws IOException {
+        stream.defaultWriteObject();
+    }
+
+    @Serial
+    private void readObject(java.io.ObjectInputStream stream)
+            throws IOException, ClassNotFoundException {
+        stream.defaultReadObject();
     }
 }

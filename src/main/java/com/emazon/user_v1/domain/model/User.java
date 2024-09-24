@@ -2,6 +2,7 @@ package com.emazon.user_v1.domain.model;
 
 import com.emazon.user_v1.domain.model.builder.IBuilder;
 
+import java.time.Instant;
 import java.time.LocalDate;
 
 public class User {
@@ -22,6 +23,10 @@ public class User {
     private Boolean accountNoLocked;
 
     private Boolean credentialNoExpired;
+
+    private Integer failedAttempts;
+
+    private Instant accountLockedDatetime;
 
     public static UserBuilder builder() {
         return new User.UserBuilder();
@@ -47,11 +52,16 @@ public class User {
 
         private Boolean credentialNoExpired;
 
+        private Integer failedAttempts;
+
+        private Instant accountLockedDatetime;
+
         public UserBuilder() {
             this.enabled = true;
             this.accountNoExpired = true;
             this.accountNoLocked = true;
             this.credentialNoExpired = true;
+            this.failedAttempts = 0;
         }
 
         public UserBuilder id(Long id) {
@@ -119,6 +129,16 @@ public class User {
             return this;
         }
 
+        public UserBuilder failedAttempts(Integer failedAttempts) {
+            this.failedAttempts = failedAttempts;
+            return this;
+        }
+
+        public UserBuilder setAccountLockedDatetime(Instant accountLockedDatetime) {
+            this.accountLockedDatetime = accountLockedDatetime;
+            return this;
+        }
+
         public User build() {
             User user = new User();
             user.setId(id);
@@ -134,6 +154,8 @@ public class User {
             user.setAccountNoExpired(accountNoExpired);
             user.setAccountNoLocked(accountNoLocked);
             user.setCredentialNoExpired(credentialNoExpired);
+            user.setFailedAttempts(failedAttempts);
+            user.setAccountLockedDatetime(accountLockedDatetime);
             return user;
         }
     }
@@ -143,6 +165,7 @@ public class User {
         this.accountNoExpired = true;
         this.accountNoLocked = true;
         this.credentialNoExpired = true;
+        this.failedAttempts = 0;
     }
 
     public Long getId() {
@@ -247,5 +270,21 @@ public class User {
 
     public void setCredentialNoExpired(Boolean credentialNoExpired) {
         this.credentialNoExpired = credentialNoExpired;
+    }
+
+    public Integer getFailedAttempts() {
+        return failedAttempts;
+    }
+
+    public void setFailedAttempts(Integer failedAttempts) {
+        this.failedAttempts = failedAttempts;
+    }
+
+    public Instant getAccountLockedDatetime() {
+        return accountLockedDatetime;
+    }
+
+    public void setAccountLockedDatetime(Instant accountLockedDatetime) {
+        this.accountLockedDatetime = accountLockedDatetime;
     }
 }
