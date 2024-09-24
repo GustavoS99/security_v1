@@ -14,5 +14,7 @@ public interface UserRequestMapper {
     @Mapping(target = "accountNoExpired", ignore = true)
     @Mapping(target = "accountNoLocked", ignore = true)
     @Mapping(target = "credentialNoExpired", ignore = true)
+    @Mapping(target = "failedAttempts", ignore = true)
+    @Mapping(target = "accountLockedDatetime", ignore = true)
     User toUser(UserRequest userRequest);
 }

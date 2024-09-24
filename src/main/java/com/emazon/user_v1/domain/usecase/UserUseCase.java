@@ -3,14 +3,14 @@ package com.emazon.user_v1.domain.usecase;
 import com.emazon.user_v1.domain.api.IUserServicePort;
 import com.emazon.user_v1.domain.auth.IAuthenticationPort;
 import com.emazon.user_v1.domain.exception.*;
+import com.emazon.user_v1.domain.model.Login;
 import com.emazon.user_v1.domain.model.Role;
 import com.emazon.user_v1.domain.model.RoleEnum;
 import com.emazon.user_v1.domain.model.User;
 import com.emazon.user_v1.domain.spi.IRolePersistencePort;
 import com.emazon.user_v1.domain.spi.IUserPersistencePort;
 
-import java.time.LocalDate;
-import java.time.Period;
+import java.time.*;
 import java.util.regex.Pattern;
 
 import static com.emazon.user_v1.util.GlobalConstants.*;
@@ -102,5 +102,73 @@ public class UserUseCase implements IUserServicePort {
         user.setRole(role);
 
         save(user);
+    }
+
+    @Override
+    public Login authenticate(Login login) {
+        User user = userPersistencePort.findByEmail(login.getUsername()).orElseThrow(UserNotFoundException::new);
+
+        validateLockedAccount(user);
+
+        validateCredentials(login, user);
+
+        authenticationPort.authenticate(login);
+
+        resetFailedAttempts(user);
+
+        login.setToken(authenticationPort.getToken(user));
+
+        return login;
+    }
+
+    private void validateLockedAccount(User user) {
+        if(Boolean.FALSE.equals(user.getAccountNoLocked()) && isLockExpired(user)){
+            resetFailedAttempts(user);
+            return;
+        }
+        if(Boolean.FALSE.equals(user.getAccountNoLocked()))
+            throw new UserLockedException();
+    }
+
+    private static boolean isLockExpired(User user) {
+        if(user.getAccountLockedDatetime() == null)
+            return Boolean.TRUE;
+        Instant accountLockedDatetime = user.getAccountLockedDatetime();
+        Instant now = Instant.now();
+        Duration between = Duration.between(accountLockedDatetime, now);
+        return between.toHours() >= HOURS_UNTIL_LOCKING_EXPIRATION;
+    }
+
+    private void validateCredentials(Login login, User user) {
+        if(Boolean.FALSE.equals(authenticationPort.matches(login.getPassword(), user.getPassword()))) {
+            increaseFailedAttempts(user);
+            lockUserAccount(user);
+            throw new BadUserCredentialsException(getAvailableAttempts(user).toString());
+        }
+    }
+
+    private void increaseFailedAttempts(User user) {
+        int newFailAttempts = user.getFailedAttempts() + FAIL_ATTEMPT;
+        user.setFailedAttempts(newFailAttempts);
+        userPersistencePort.save(user);
+    }
+
+    private Integer getAvailableAttempts(User user) {
+        return MAX_FAILED_ATTEMPTS - user.getFailedAttempts();
+    }
+
+    private void resetFailedAttempts(User user) {
+        user.setFailedAttempts(0);
+        user.setAccountNoLocked(true);
+        user.setAccountLockedDatetime(null);
+        userPersistencePort.save(user);
+    }
+
+    private void lockUserAccount(User user) {
+        if (user.getFailedAttempts() >= MAX_FAILED_ATTEMPTS) {
+            user.setAccountNoLocked(false);
+            user.setAccountLockedDatetime(Instant.now());
+            userPersistencePort.save(user);
+        }
     }
 }

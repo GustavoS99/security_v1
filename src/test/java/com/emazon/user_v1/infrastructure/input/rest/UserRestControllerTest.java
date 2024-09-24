@@ -1,58 +1,77 @@
 package com.emazon.user_v1.infrastructure.input.rest;
 
-import com.emazon.user_v1.application.dto.UserRequest;
-import com.emazon.user_v1.application.handler.IUserHandler;
 import com.emazon.user_v1.infrastructure.out.jpa.entity.RoleEntity;
 import com.emazon.user_v1.infrastructure.out.jpa.entity.RoleEntityEnum;
 import com.emazon.user_v1.infrastructure.out.jpa.entity.UserEntity;
 import com.emazon.user_v1.infrastructure.out.jpa.repository.IUserRepository;
+import com.emazon.user_v1.infrastructure.out.jwt.util.JwtUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-import static com.emazon.user_v1.infrastructure.input.rest.utils.PathDefinition.SIGNUP_WAREHOUSE_WORKER;
-import static com.emazon.user_v1.infrastructure.input.rest.utils.PathDefinition.USER;
+import static com.emazon.user_v1.infrastructure.input.rest.util.PathDefinition.*;
+import static com.emazon.user_v1.util.GlobalConstants.ADMIN;
+import static com.emazon.user_v1.util.GlobalConstants.BEARER;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
-@AutoConfigureMockMvc
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(SpringExtension.class)
 class UserRestControllerTest {
 
-    @SpyBean
-    private IUserHandler userHandler;
-
+    public static final String ADMIN_USERNAME = "1,gustavo.salazar.co@gmail.com";
     @MockBean
     private IUserRepository userRepository;
 
+    @MockBean
+    private BCryptPasswordEncoder passwordEncoder;
+
     @Autowired
+    private JwtUtils jwtUtils;
+
+    @Autowired
+    private WebApplicationContext context;
+
     private MockMvc mockMvc;
 
     private String userJson;
     private UserEntity userEntity;
     private Optional<UserEntity> optionalUserEntity;
+    private String loginJson;
 
     @BeforeEach
     void setUp() {
+        mockMvc = MockMvcBuilders
+                .webAppContextSetup(context)
+                .apply(springSecurity())
+                .build();
+
         userJson = """
                 {
                     "firstName": "Ronaldo",
@@ -76,12 +95,25 @@ class UserRestControllerTest {
                 .birthDate(LocalDate.of(1990, 1, 1))
                 .identification(876436432L)
                 .role(roleEntity)
+                .enabled(true)
+                .accountNoExpired(true)
+                .accountNoLocked(true)
+                .credentialNoExpired(true)
+                .failedAttempts(0)
                 .build();
 
         optionalUserEntity = Optional.of(userEntity);
+
+        loginJson = """
+                {
+                "username" : "ronaldo@email.com",
+                "password" : "password"
+                }
+                """;
     }
 
     @Test
+    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
     void when_saveWarehouseWorker_expect_statusCreated() throws Exception {
 
         when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
@@ -407,16 +439,17 @@ class UserRestControllerTest {
 
     @ParameterizedTest
     @MethodSource("providedExpect_badRequest_when_requestValidationFails")
+    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
     void expect_badRequest_when_requestValidationFails(String userJsonBadRequest) throws Exception {
-        doCallRealMethod().when(userHandler).saveWarehouseWorker(any(UserRequest.class));
 
         mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(userJsonBadRequest))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(userJsonBadRequest))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
+    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
     void expect_conflict_when_userEmailExists() throws Exception {
 
         when(userRepository.findByEmail(anyString())).thenReturn(optionalUserEntity);
@@ -428,6 +461,7 @@ class UserRestControllerTest {
     }
 
     @Test
+    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
     void expect_conflict_when_userIdentificationExists() throws Exception {
 
         when(userRepository.findByIdentification(anyLong())).thenReturn(optionalUserEntity);
@@ -439,6 +473,7 @@ class UserRestControllerTest {
     }
 
     @Test
+    @WithMockUser(username = ADMIN_USERNAME, roles = ADMIN)
     void expect_conflict_when_userPhoneNumberExists() throws Exception {
 
         when(userRepository.findByPhoneNumber(anyString())).thenReturn(optionalUserEntity);
@@ -447,5 +482,112 @@ class UserRestControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userJson))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void when_loginUser_expect_loggedInSuccessfully() throws Exception {
+
+        when(userRepository.findByEmail(anyString())).thenReturn(optionalUserEntity);
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(Boolean.TRUE);
+
+        mockMvc.perform(post(USER.concat(LOGIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void expect_forbidden_when_userIsLocked() throws Exception {
+        userEntity.setAccountNoLocked(Boolean.FALSE);
+        userEntity.setAccountLockedDatetime(Instant.now());
+
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(userEntity));
+
+        mockMvc.perform(post(USER.concat(LOGIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "2,ronaldo@email.com", roles = "WAREHOUSE_WORKER")
+    void expect_forbidden_when_userDoesNotHavePermissions() throws Exception {
+        mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void expect_unauthorized_when_passwordIsWrong() throws Exception {
+
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(userEntity));
+        when(passwordEncoder.matches(anyString(), anyString())).thenReturn(Boolean.FALSE);
+
+        mockMvc.perform(post(USER.concat(LOGIN))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void expect_unauthorized_when_anInvalidTokenWasGiven() throws Exception {
+        String fakeToken = "fakeToken";
+
+        mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson)
+                        .header(HttpHeaders.AUTHORIZATION, BEARER.concat(fakeToken))
+                )
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void expect_unauthorized_when_anEmptyTokenWasSent() throws Exception {
+
+        mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(loginJson)
+                )
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void when_tokenIsValid_expect_successfullyAuthenticatedAndAllowsToSave() throws Exception {
+        String username = "1,gustavo.salazar.co@gmail.com";
+
+        String adminEmail = "gustavo.salazar.co@gmail.com";
+
+        String userEmail = "ronaldo@email.com";
+
+        List<SimpleGrantedAuthority> simpleGrantedAuthorities = new ArrayList<>();
+        simpleGrantedAuthorities.add(new SimpleGrantedAuthority("ROLE_".concat(ADMIN)));
+
+        String token = jwtUtils.createToken(new UsernamePasswordAuthenticationToken(
+                username, "password", simpleGrantedAuthorities
+        ));
+
+        UserEntity adminEntity = UserEntity.builder()
+                .id(1L)
+                .password("password")
+                .role(new RoleEntity(1L, RoleEntityEnum.ADMIN, "ADMIN"))
+                .enabled(true)
+                .accountNoExpired(true)
+                .accountNoLocked(true)
+                .credentialNoExpired(true)
+                .build();
+
+        when(userRepository.findByEmail(adminEmail)).thenReturn(Optional.of(adminEntity));
+
+        when(userRepository.findByEmail(userEmail)).thenReturn(Optional.empty());
+
+        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
+
+        mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(userJson)
+                        .header(HttpHeaders.AUTHORIZATION, BEARER.concat(token))
+                )
+                .andExpect(status().isCreated());
     }
 }
