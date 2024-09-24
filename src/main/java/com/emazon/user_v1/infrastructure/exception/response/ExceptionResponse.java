@@ -1,4 +1,4 @@
-package com.emazon.user_v1.infrastructure.exception.handler;
+package com.emazon.user_v1.infrastructure.exception.response;
 
 
 import com.emazon.user_v1.util.GlobalConstants;
@@ -12,7 +12,11 @@ public enum ExceptionResponse {
     EMAIL_EXISTS("The email already exists"),
     IDENTIFICATION_EXISTS("The identification already exists"),
     INVALID_EMAIL_PATTERN("Invalid email pattern"),
-    EMPTY_USER_ATTRIBUTE("The user contains empty attributes");
+    EMPTY_USER_ATTRIBUTE("The user contains empty attributes"),
+    LOCKED_USER("Blocked for 24 hours due to too many failed login attempts"),
+    BAD_CREDENTIALS("The given credentials are not valid. Available attempts: "),
+    INVALID_TOKEN("Invalid or expired token"),
+    ACCESS_DENIED("Access Denied. You do not have sufficient privileges to access this resource.");
 
     private String message;
 

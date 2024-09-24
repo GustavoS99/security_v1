@@ -1,6 +1,7 @@
 package com.emazon.user_v1.infrastructure.exception.handler;
 
 import com.emazon.user_v1.domain.exception.*;
+import com.emazon.user_v1.infrastructure.exception.response.ExceptionResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -40,14 +41,6 @@ public class ControllerAdvisor {
                 .body(Collections.singletonMap(MESSAGE, ExceptionResponse.PHONE_NUMBER_EXISTS.getMessage()));
     }
 
-    @ExceptionHandler(InvalidPhoneNumberException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidPhoneNumberException(
-            InvalidPhoneNumberException invalidPhoneNumberException
-    ) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.INVALID_PHONE_NUMBER_PATTERN.getMessage()));
-    }
-
     @ExceptionHandler(EmailExistsException.class)
     public ResponseEntity<Map<String, String>> handleEmailExistsException(
             EmailExistsException emailExistsException
@@ -64,19 +57,40 @@ public class ControllerAdvisor {
                 .body(Collections.singletonMap(MESSAGE, ExceptionResponse.IDENTIFICATION_EXISTS.getMessage()));
     }
 
-    @ExceptionHandler(InvalidEmailException.class)
-    public ResponseEntity<Map<String, String>> handleInvalidEmailException(
-            InvalidEmailException invalidEmailException
-    ) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.INVALID_EMAIL_PATTERN.getMessage()));
-    }
-
     @ExceptionHandler(EmptyUserAttributeException.class)
     public ResponseEntity<Map<String, String>> handleEmptyUserAttributeException(
             EmptyUserAttributeException emptyUserAttributeException
     ) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Collections.singletonMap(MESSAGE, ExceptionResponse.EMPTY_USER_ATTRIBUTE.getMessage()));
+    }
+
+
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleUserNotFoundException(
+            UserNotFoundException userNotFoundException
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.USER_NOT_FOUND.getMessage()));
+    }
+
+    @ExceptionHandler(UserLockedException.class)
+    public ResponseEntity<Map<String, String>> handleUserLockedException(
+            UserLockedException userLockedException
+    ) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.LOCKED_USER.getMessage()));
+    }
+
+    @ExceptionHandler(BadUserCredentialsException.class)
+    public ResponseEntity<Map<String, String>> handleBadUserCredentialsException(
+            BadUserCredentialsException badUserCredentialsException
+    ) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Collections.singletonMap(
+                        MESSAGE,
+                        ExceptionResponse.BAD_CREDENTIALS.getMessage().concat(badUserCredentialsException.getMessage()))
+                );
     }
 }

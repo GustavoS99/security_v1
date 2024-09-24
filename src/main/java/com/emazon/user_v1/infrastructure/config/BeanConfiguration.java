@@ -12,9 +12,11 @@ import com.emazon.user_v1.infrastructure.out.jpa.mapper.UserEntityMapper;
 import com.emazon.user_v1.infrastructure.out.jpa.repository.IRoleRepository;
 import com.emazon.user_v1.infrastructure.out.jpa.repository.IUserRepository;
 import com.emazon.user_v1.infrastructure.out.jwt.adapter.AuthenticationAdapter;
+import com.emazon.user_v1.infrastructure.out.jwt.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
@@ -26,6 +28,8 @@ public class BeanConfiguration {
     private final PasswordEncoder passwordEncoder;
     private final IRoleRepository roleRepository;
     private final RoleEntityMapper roleEntityMapper;
+    private final JwtUtils jwtUtils;
+    private final AuthenticationManager authenticationManager;
 
     @Bean
     public IUserPersistencePort userPersistencePort() {
@@ -34,7 +38,7 @@ public class BeanConfiguration {
 
     @Bean
     public IAuthenticationPort authenticationPort() {
-        return new AuthenticationAdapter(passwordEncoder);
+        return new AuthenticationAdapter(passwordEncoder, jwtUtils, authenticationManager);
     }
 
     @Bean
