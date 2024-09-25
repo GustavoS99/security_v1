@@ -142,7 +142,8 @@ public class UserUseCase implements IUserServicePort {
     private void validateCredentials(Login login, User user) {
         if(Boolean.FALSE.equals(authenticationPort.matches(login.getPassword(), user.getPassword()))) {
             increaseFailedAttempts(user);
-            lockUserAccount(user);
+            setLockUserAccount(user);
+            userPersistencePort.save(user);
             throw new BadUserCredentialsException(getAvailableAttempts(user).toString());
         }
     }
@@ -150,7 +151,6 @@ public class UserUseCase implements IUserServicePort {
     private void increaseFailedAttempts(User user) {
         int newFailAttempts = user.getFailedAttempts() + FAIL_ATTEMPT;
         user.setFailedAttempts(newFailAttempts);
-        userPersistencePort.save(user);
     }
 
     private Integer getAvailableAttempts(User user) {
@@ -164,11 +164,10 @@ public class UserUseCase implements IUserServicePort {
         userPersistencePort.save(user);
     }
 
-    private void lockUserAccount(User user) {
+    private void setLockUserAccount(User user) {
         if (user.getFailedAttempts() >= MAX_FAILED_ATTEMPTS) {
             user.setAccountNoLocked(false);
             user.setAccountLockedDatetime(Instant.now());
-            userPersistencePort.save(user);
         }
     }
 }
