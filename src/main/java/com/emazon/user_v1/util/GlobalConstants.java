@@ -4,7 +4,7 @@ public class GlobalConstants {
 
     public static final String EMAIL_REGEX = "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9-]+(\\.[a-zA-Z]{2,})+$";
 
-    public static final String PHONE_NUMBER_REGEX = "^\\+?\\d{10,13}$";
+    public static final String PHONE_NUMBER_REGEX = "^(\\+573\\d{9}|3\\d{9})$";
 
     public static final String DATE_REGEX = "^\\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])$";
 
