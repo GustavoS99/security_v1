@@ -4,7 +4,6 @@ import com.emazon.user_v1.domain.api.IUserServicePort;
 import com.emazon.user_v1.domain.auth.IAuthenticationPort;
 import com.emazon.user_v1.domain.exception.*;
 import com.emazon.user_v1.domain.model.Login;
-import com.emazon.user_v1.domain.model.Role;
 import com.emazon.user_v1.domain.model.RoleEnum;
 import com.emazon.user_v1.domain.model.User;
 import com.emazon.user_v1.domain.spi.IRolePersistencePort;
@@ -31,8 +30,7 @@ public class UserUseCase implements IUserServicePort {
         this.authenticationPort = authenticationPort;
     }
 
-    @Override
-    public void save(User user) {
+    private void save(User user) {
         validateInputs(user);
 
         user.setPassword(authenticationPort.encode(user.getPassword()));
@@ -47,9 +45,9 @@ public class UserUseCase implements IUserServicePort {
 
         user.setPassword(validateStringInput(user.getPassword()));
 
-        validateEmail(user.getEmail());
+        validateEmail(validateStringInput(user.getEmail()));
 
-        validatePhoneNumber(user.getPhoneNumber());
+        validatePhoneNumber(validateStringInput(user.getPhoneNumber()));
 
         validateIdentification(user.getIdentification());
 
@@ -58,19 +56,21 @@ public class UserUseCase implements IUserServicePort {
     }
 
     private String validateStringInput(String string) {
-        if(string.trim().isEmpty())
+        if(string == null || string.trim().isEmpty())
             throw new EmptyUserAttributeException();
         return string.trim();
     }
 
     private void validateIdentification(Long identification) {
+        if(identification == null || identification == 0)
+            throw new EmptyUserAttributeException();
+
         if(userPersistencePort.findByIdentification(identification).isPresent()) {
             throw new IdentificationExistsException();
         }
     }
 
     public void validateEmail(String email) {
-        email = validateStringInput(email);
 
         if(!Pattern.compile(EMAIL_REGEX).matcher(email).matches())
             throw new InvalidEmailException();
@@ -80,7 +80,6 @@ public class UserUseCase implements IUserServicePort {
     }
 
     private void validatePhoneNumber(String phoneNumber) {
-        phoneNumber = validateStringInput(phoneNumber);
 
         if (!Pattern.compile(PHONE_NUMBER_REGEX).matcher(phoneNumber).matches())
             throw new InvalidPhoneNumberException();
@@ -90,16 +89,17 @@ public class UserUseCase implements IUserServicePort {
     }
 
     private void validateIsAdult(LocalDate birthDate) {
+        if(birthDate == null)
+            throw new EmptyUserAttributeException();
+
         if(Period.between(birthDate, LocalDate.now()).getYears() < EIGHTEEN_YEARS)
             throw new InvalidAgeException();
     }
 
     @Override
     public void saveWarehouseWorker(User user) {
-
-        Role role = rolePersistencePort.findByName(RoleEnum.WAREHOUSE_WORKER.name()).orElseThrow();
-
-        user.setRole(role);
+        user.setRole(rolePersistencePort.findByName(RoleEnum.WAREHOUSE_WORKER.name())
+                .orElseThrow(SystemRoleNotFoundException::new));
 
         save(user);
     }
@@ -169,5 +169,13 @@ public class UserUseCase implements IUserServicePort {
             user.setAccountNoLocked(false);
             user.setAccountLockedDatetime(Instant.now());
         }
+    }
+
+    @Override
+    public void saveCustomer(User user) {
+        user.setRole(rolePersistencePort.findByName(RoleEnum.CUSTOMER.name())
+                .orElseThrow(SystemRoleNotFoundException::new));
+
+        save(user);
     }
 }

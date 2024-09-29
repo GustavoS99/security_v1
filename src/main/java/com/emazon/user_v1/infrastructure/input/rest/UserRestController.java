@@ -32,7 +32,7 @@ public class UserRestController {
             @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
             @ApiResponse(responseCode = "403", description = "Forbidden", content = @Content)
     })
-    @Operation(summary = "Add a new user")
+    @Operation(summary = "Add a new warehouse worker")
     @PostMapping(SIGNUP_WAREHOUSE_WORKER)
     public ResponseEntity<Void> saveWarehouseWorker(
             @RequestBody @Valid UserRequest userRequest
@@ -50,5 +50,21 @@ public class UserRestController {
     @PostMapping(LOGIN)
     public ResponseEntity<LoginResponse> login(@RequestBody @Valid LoginRequest loginRequest) {
         return ResponseEntity.ok(userHandler.authenticate(loginRequest));
+    }
+
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User created", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Bad user request", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Unauthorized", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Forbidden", content = @Content),
+            @ApiResponse(responseCode = "409", description = "User already exists", content = @Content)
+    })
+    @Operation(summary = "Add a new customer")
+    @PostMapping(SIGNUP)
+    public ResponseEntity<Void> saveCustomer(
+            @RequestBody @Valid UserRequest userRequest
+    ) {
+        userHandler.saveCustomer(userRequest);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
     }
 }

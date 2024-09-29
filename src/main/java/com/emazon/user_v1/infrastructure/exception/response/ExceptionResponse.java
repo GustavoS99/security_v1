@@ -16,7 +16,9 @@ public enum ExceptionResponse {
     LOCKED_USER("Blocked for 24 hours due to too many failed login attempts"),
     BAD_CREDENTIALS("The given credentials are not valid. Available attempts: "),
     INVALID_TOKEN("Invalid or expired token"),
-    ACCESS_DENIED("Access Denied. You do not have sufficient privileges to access this resource.");
+    ACCESS_DENIED("Access Denied. You do not have sufficient privileges to access this resource."),
+    INVALID_DATA_TYPE("One or more fields contain incorrect data types. Check the field types."),
+    ROLE_NOT_FOUND("The role was not found");
 
     private String message;
 

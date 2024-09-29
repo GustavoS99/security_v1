@@ -45,7 +45,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ExtendWith(SpringExtension.class)
 class UserRestControllerTest {
 
-    public static final String ADMIN_USERNAME = "1,gustavo.salazar.co@gmail.com";
+    public static final String ADMIN_USERNAME = "1";
+
     @MockBean
     private IUserRepository userRepository;
 
@@ -61,9 +62,10 @@ class UserRestControllerTest {
     private MockMvc mockMvc;
 
     private String userJson;
-    private UserEntity userEntity;
+    private UserEntity workerUserEntity;
     private Optional<UserEntity> optionalUserEntity;
     private String loginJson;
+    private UserEntity customerUserEntity;
 
     @BeforeEach
     void setUp() {
@@ -83,9 +85,9 @@ class UserRestControllerTest {
                     "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
                 }
                 """;
-        RoleEntity roleEntity = new RoleEntity(2L, RoleEntityEnum.WAREHOUSE_WORKER, "Wharehouse worker");
+        RoleEntity workerRoleEntity = new RoleEntity(2L, RoleEntityEnum.WAREHOUSE_WORKER, "Wharehouse worker");
 
-        userEntity = UserEntity.builder()
+        workerUserEntity = UserEntity.builder()
                 .id(2L)
                 .firstName("Ronaldo")
                 .lastName("Ramirez")
@@ -94,7 +96,7 @@ class UserRestControllerTest {
                 .phoneNumber("+573003216598")
                 .birthDate(LocalDate.of(1990, 1, 1))
                 .identification(876436432L)
-                .role(roleEntity)
+                .role(workerRoleEntity)
                 .enabled(true)
                 .accountNoExpired(true)
                 .accountNoLocked(true)
@@ -102,7 +104,30 @@ class UserRestControllerTest {
                 .failedAttempts(0)
                 .build();
 
-        optionalUserEntity = Optional.of(userEntity);
+        RoleEntity customerRoleEntity = RoleEntity.builder()
+                .id(3L)
+                .name(RoleEntityEnum.CUSTOMER)
+                .description("Customer")
+                .build();
+
+        customerUserEntity = UserEntity.builder()
+                .id(3L)
+                .firstName("Messi")
+                .lastName("Perez")
+                .email("messi@email.com")
+                .password("jsduiiefw893iu32e8921,mdñ{ñ{.")
+                .phoneNumber("+573003219832")
+                .birthDate(LocalDate.of(1990, 1, 1))
+                .identification(876436432L)
+                .role(customerRoleEntity)
+                .enabled(true)
+                .accountNoExpired(true)
+                .accountNoLocked(true)
+                .credentialNoExpired(true)
+                .failedAttempts(0)
+                .build();
+
+        optionalUserEntity = Optional.of(workerUserEntity);
 
         loginJson = """
                 {
@@ -112,15 +137,43 @@ class UserRestControllerTest {
                 """;
     }
 
-    @Test
-    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
-    void when_saveWarehouseWorker_expect_statusCreated() throws Exception {
+    private static Stream<Arguments> providedWhen_saveWarehouseWorker_expect_statusCreated() {
+        return Stream.of(
+                Arguments.of("""
+                {
+                    "firstName": "Ronaldo",
+                    "lastName": "Ramirez",
+                    "identification": 876436432,
+                    "phoneNumber": "+573003216598",
+                    "birthDate": "1990-01-01",
+                    "email": "ronaldo@email.com",
+                    "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
+                }
+                """),
+                Arguments.of("""
+                {
+                    "firstName": "Ronaldo",
+                    "lastName": "Ramirez",
+                    "identification": 876436432,
+                    "phoneNumber": "3003216598",
+                    "birthDate": "1990-01-01",
+                    "email": "ronaldo@email.com",
+                    "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
+                }
+                """)
+        );
+    }
 
-        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
+    @ParameterizedTest
+    @MethodSource("providedWhen_saveWarehouseWorker_expect_statusCreated")
+    @WithMockUser(username = ADMIN_USERNAME, roles = {ADMIN})
+    void when_saveWarehouseWorker_expect_statusCreated(String saveUserJson) throws Exception {
+
+        when(userRepository.save(any(UserEntity.class))).thenReturn(workerUserEntity);
 
         mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(userJson))
+                .content(saveUserJson))
                 .andExpect(status().isCreated());
     }
 
@@ -286,6 +339,17 @@ class UserRestControllerTest {
                             "lastName": "Ramirez",
                             "identification": 876436432,
                             "phoneNumber": "+573003216598",
+                            "birthDate": "1990/01/01",
+                            "email": "ronaldo@email.com",
+                            "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
+                        }
+                        """),
+                Arguments.of("""
+                        {
+                            "firstName": "Ronaldo",
+                            "lastName": "Ramirez",
+                            "identification": 876436432,
+                            "phoneNumber": "+573003216598",
                             "birthDate": "1990",
                             "email": "ronaldo@email.com",
                             "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
@@ -433,6 +497,17 @@ class UserRestControllerTest {
                             "email": "user@email.com",
                             "password": null
                         }
+                        """),
+                Arguments.of("""
+                        {
+                            "firstName": "Ronaldo",
+                            "lastName": "Ramirez",
+                            "identification": "876436fdishd",
+                            "phoneNumber": "+573003216598",
+                            "birthDate": "1990-01-01",
+                            "email": "user@email.com",
+                            "password": "foeofjwoeie"
+                        }
                         """)
         );
     }
@@ -498,10 +573,10 @@ class UserRestControllerTest {
 
     @Test
     void expect_forbidden_when_userIsLocked() throws Exception {
-        userEntity.setAccountNoLocked(Boolean.FALSE);
-        userEntity.setAccountLockedDatetime(Instant.now());
+        workerUserEntity.setAccountNoLocked(Boolean.FALSE);
+        workerUserEntity.setAccountLockedDatetime(Instant.now());
 
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(userEntity));
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(workerUserEntity));
 
         mockMvc.perform(post(USER.concat(LOGIN))
                         .contentType(MediaType.APPLICATION_JSON)
@@ -521,7 +596,7 @@ class UserRestControllerTest {
     @Test
     void expect_unauthorized_when_passwordIsWrong() throws Exception {
 
-        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(userEntity));
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(workerUserEntity));
         when(passwordEncoder.matches(anyString(), anyString())).thenReturn(Boolean.FALSE);
 
         mockMvc.perform(post(USER.concat(LOGIN))
@@ -581,13 +656,52 @@ class UserRestControllerTest {
 
         when(userRepository.findByEmail(userEmail)).thenReturn(Optional.empty());
 
-        when(userRepository.save(any(UserEntity.class))).thenReturn(userEntity);
+        when(userRepository.save(any(UserEntity.class))).thenReturn(workerUserEntity);
 
         mockMvc.perform(post(USER.concat(SIGNUP_WAREHOUSE_WORKER))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(userJson)
                         .header(HttpHeaders.AUTHORIZATION, BEARER.concat(token))
                 )
+                .andExpect(status().isCreated());
+    }
+
+    private static Stream<Arguments> providedWhen_saveCustomer_expect_statusCreated() {
+        return Stream.of(
+                Arguments.of("""
+                {
+                    "firstName": "Messi",
+                    "lastName": "Perez",
+                    "identification": 876436984,
+                    "phoneNumber": "+573003216545",
+                    "birthDate": "1990-01-01",
+                    "email": "messi@email.com",
+                    "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
+                }
+                """),
+                Arguments.of("""
+                {
+                    "firstName": "Messi",
+                    "lastName": "Perez",
+                    "identification": 876436984,
+                    "phoneNumber": "3003216545",
+                    "birthDate": "1990-01-01",
+                    "email": "messi@email.com",
+                    "password": "vfegnkj67rJBEFWIU87Ykjnfderiufe"
+                }
+                """)
+        );
+    }
+
+    @ParameterizedTest
+    @MethodSource("providedWhen_saveCustomer_expect_statusCreated")
+    void when_saveCustomer_expect_statusCreated(String saveUserJson) throws Exception {
+
+        when(userRepository.save(any(UserEntity.class))).thenReturn(customerUserEntity);
+
+        mockMvc.perform(post(USER.concat(SIGNUP))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(saveUserJson))
                 .andExpect(status().isCreated());
     }
 }
