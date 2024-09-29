@@ -4,6 +4,7 @@ import com.emazon.user_v1.domain.exception.*;
 import com.emazon.user_v1.infrastructure.exception.response.ExceptionResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,6 +17,14 @@ import java.util.Map;
 public class ControllerAdvisor {
 
     private static final String MESSAGE = "message";
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, String>> handleHttpMessageNotReadableException(
+            HttpMessageNotReadableException httpMessageNotReadableException
+    ) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.INVALID_DATA_TYPE.getMessage()));
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, String>> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -92,5 +101,13 @@ public class ControllerAdvisor {
                         MESSAGE,
                         ExceptionResponse.BAD_CREDENTIALS.getMessage().concat(badUserCredentialsException.getMessage()))
                 );
+    }
+
+    @ExceptionHandler(SystemRoleNotFoundException.class)
+    public ResponseEntity<Map<String, String>> handleSystemRoleNotFoundException(
+            SystemRoleNotFoundException systemRoleNotFoundException
+    ) {
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(Collections.singletonMap(MESSAGE, ExceptionResponse.ROLE_NOT_FOUND.getMessage()));
     }
 }
