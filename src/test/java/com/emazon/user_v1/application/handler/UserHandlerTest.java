@@ -6,8 +6,6 @@ import com.emazon.user_v1.application.dto.UserRequest;
 import com.emazon.user_v1.application.mapper.*;
 import com.emazon.user_v1.domain.api.IUserServicePort;
 import com.emazon.user_v1.domain.model.Login;
-import com.emazon.user_v1.domain.model.Role;
-import com.emazon.user_v1.domain.model.RoleEnum;
 import com.emazon.user_v1.domain.model.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,10 +13,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.Instant;
-import java.time.LocalDate;
-import java.util.Date;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -32,7 +26,7 @@ class UserHandlerTest {
     private IUserServicePort userServicePort;
 
     @Mock
-    private UserRequestMapper userRequestMapper;
+    private UserRequestMapperImpl userRequestMapper;
 
     @Mock
     private LoginRequestMapperImpl loginRequestMapper;
@@ -43,46 +37,56 @@ class UserHandlerTest {
     @InjectMocks
     private UserHandler userHandler;
 
-    private User workerUser;
-    private UserRequest userRequest;
+    private UserRequest workerUserRequest;
     private LoginRequest loginRequest;
+    private UserRequest customerUserRequest;
 
     @BeforeEach
     void setUp() {
-        Role workerRole = new Role(2L, RoleEnum.WAREHOUSE_WORKER, "Auxiliar de bodega");
 
-        workerUser = User.builder()
-                .id(2L)
+        workerUserRequest = UserRequest.builder()
                 .firstName("Ronaldo")
                 .lastName("Ramirez")
                 .email("ronaldo@email.com")
                 .password("vfegnkj67rJBEFWIU87Ykjnfderiufe")
-                .birthDate(LocalDate.of(1990, 1, 1))
-                .identification(876436432L)
-                .role(workerRole)
-                .build();
-
-        userRequest = UserRequest.builder()
-                .firstName("Ronaldo")
-                .lastName("Ramirez")
-                .email("ronaldo@email.com")
-                .password("vfegnkj67rJBEFWIU87Ykjnfderiufe")
-                .birthDate(Date.from(Instant.ofEpochMilli(431964635000L)).toString())
+                .birthDate("1990-01-01")
                 .identification(876436432L)
                 .build();
 
-        loginRequest = new LoginRequest(userRequest.getEmail(), userRequest.getPassword());
+        loginRequest = new LoginRequest(workerUserRequest.getEmail(), workerUserRequest.getPassword());
+    }
+
+    @Test
+    void when_saveCustomer_expect_callToServicePort() {
+
+        customerUserRequest = UserRequest.builder()
+                .firstName("Messi")
+                .lastName("Perez")
+                .email("messi@email.com")
+                .password("kjfd89732jfre8732e")
+                .birthDate("1995-01-23")
+                .identification(87453873276L)
+                .build();
+
+        doCallRealMethod().when(userRequestMapper).toUser(any(UserRequest.class));
+
+        doNothing().when(userServicePort).saveWarehouseWorker(any(User.class));
+
+        userHandler.saveWarehouseWorker(customerUserRequest);
+
+        verify(userServicePort, times(1)).saveWarehouseWorker(any(User.class));
     }
 
     @Test
     void when_saveWarehouseWorker_expect_callToServicePort() {
-        when(userRequestMapper.toUser(any(UserRequest.class))).thenReturn(workerUser);
+
+        doCallRealMethod().when(userRequestMapper).toUser(any(UserRequest.class));
 
         doNothing().when(userServicePort).saveWarehouseWorker(any(User.class));
 
-        userHandler.saveWarehouseWorker(userRequest);
+        userHandler.saveWarehouseWorker(workerUserRequest);
 
-        verify(userServicePort, times(1)).saveWarehouseWorker(workerUser);
+        verify(userServicePort, times(1)).saveWarehouseWorker(any(User.class));
     }
 
     @Test

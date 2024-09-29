@@ -33,4 +33,9 @@ public class UserHandler implements IUserHandler {
         return loginResponseMapper.toLoginResponse(
                 userServicePort.authenticate(loginRequestMapper.toLogin(loginRequest)));
     }
+
+    @Override
+    public void saveCustomer(UserRequest userRequest) {
+        userServicePort.saveCustomer(userRequestMapper.toUser(userRequest));
+    }
 }

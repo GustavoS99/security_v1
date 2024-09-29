@@ -43,6 +43,8 @@ public class SecurityConfiguration {
                             HttpMethod.POST, USER.concat(SIGNUP_WAREHOUSE_WORKER)
                     ).hasRole(ADMIN);
 
+                    authorizeRequests.requestMatchers(HttpMethod.POST, USER.concat(SIGNUP)).permitAll();
+
                     authorizeRequests.requestMatchers(HttpMethod.POST, USER.concat(LOGIN)).permitAll();
 
                     authorizeRequests.requestMatchers(SWAGGER_UI).permitAll();
